@@ -10,3 +10,9 @@
 
 ## tusharetosql
 抓取tushare日线数据到mysql
+
+## scrapy
+一些爬虫脚本
+
+## jsl.py
+获取集思路的分级基金数据
