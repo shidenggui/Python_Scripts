@@ -5,7 +5,7 @@
 # 初始化
 # jsl = JSL()
 # 初始化时可以传入利率范围和最小交易量
-# funda.getFunda(field=['+3.5%', '5.0%'], minvolume=300)
+# jsl.getFunda(field=['+3.5%', '5.0%'], minvolume=300)
 import time
 from pprint import pprint
 import requests
