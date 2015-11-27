@@ -4,16 +4,8 @@
 # 使用方法:
 # 初始化
 # jsl = JSL()
-# 初始化时传入利率范围和最小交易量
-# jsl = JSL(range=[3, 3.2], minvolume=5000, ignore=['150209'])
-# 设置分级A的利率范围
-# jsl.range = [4]
-# 设置之后分级A的最小交易量
-# jsl.minvolume = 1000
-# 设置分级A的忽略列表，默认忽略深成指A
-# jsl.ignore = ['150209']
-# 获取数据
-# jsl.getFunda()
+# 初始化时可以传入利率范围和最小交易量
+# funda.getFunda(field=['+3.5%', '5.0%'], minvolume=300)
 import time
 from pprint import pprint
 import requests
@@ -70,51 +62,10 @@ class JSL(object):
     #  'owned': 0,
     #  'status_cd': 'N'}
     # }
-    __funda = None
-
-    # 设置利率范围，不设置则取全部
-    # 例如: [3, 3.2]
-    __range = []
-
-    @property
-    def range(self):
-        return self.__range
-
-    @range.setter
-    def range(self, valuelist):
-        # 转为带一个小数点的字符串列表，方便比较
-        self.__range = ['%.1f' % x for x in valuelist]
-
-    # 设置最小成交额（单位：万）
-    __minvolume = 0
-
-    @property
-    def minvolume(self):
-        return self.__minvolume
-
-    @minvolume.setter
-    def minvolume(self, value):
-        self.__minvolume = value
-
-    # 设置忽略的分级基金列表,默认忽略深成指
-    __ignore = ['150022']
-
-    @property
-    def ignore(self):
-        return self.__ignore
-
-    @ignore.setter
-    def ignore(self, ignorelist):
-        self.__ignore = ignorelist
-
-    def __init__(self, range=[], minvolume=0, ignore=[]):
-        self.ignore = ignore if len(ignore) else self.__ignore
-        self.range = range
-        self.minvolume = minvolume
 
     @staticmethod
     def formatjson(fundajson):
-        "格式化集思录返回的json数据,以字典形式保存"
+        '格式化集思录返回的json数据,以字典形式保存'
         d = {}
         for row in fundajson['rows']:
             id = row['id']
@@ -122,7 +73,7 @@ class JSL(object):
             d[id] = cell
         return d
 
-    def getFunda(self):
+    def getFunda(self, field=[], minvolume=0):
         '以字典形式返回分级A数据'
         # 添加当前的ctime
         self.__funda_url = self.__funda_url.format(ctime=int(time.time()))
@@ -131,25 +82,17 @@ class JSL(object):
         # 获取返回的json字符串
         fundajson = json.loads(rep.text)
         # 格式化返回的json字符串
-        alladata = self.formatjson(fundajson)
-        # 检查是否设置过滤条件
-        if len(self.__range) or self.__minvolume or len(self.__range):
-            # 过滤掉不符合条件的A
-            for k in list(alladata):
-                cell = alladata[k]
-                # 忽略非指定利率 and 忽略小于最小成交量 and 忽略忽略列表中的分级
-                if (not cell['coupon_descr_s'][1:4] in ''.join(self.__range) if len(self.__range) else False) or \
-                            float(cell['funda_volume']) < self.__minvolume or \
-                            k in self.__ignore:
-                    alladata.pop(k)
-        self.__funda = alladata
+        alldata = self.formatjson(fundajson)
+        # 过滤小于指定交易量的数据
+        if minvolume:
+            alldata = {k:alldata[k] for k in alldata if float(alldata[k]['funda_volume']) > minvolume}
+        if len(field):
+            alldata = {k:alldata[k] for k in alldata if alldata[k]['coupon_descr_s'] in ''.join(field)}
+        self.__funda = alldata
         return self.__funda
 
 
 if __name__ == '__main__':
     funda = JSL()
-    # 设置利率范围
-    funda.range = [3]
-    # 设置最小交易量
-    funda.minvolume = 15000
-    pprint(funda.getFunda())
+    # 设置利率范围和最小交易量
+    pprint(funda.getFunda(field=['+3.5%', '5.0%'], minvolume=300))
