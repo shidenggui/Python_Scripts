@@ -73,8 +73,14 @@ class JSL(object):
             d[id] = cell
         return d
 
-    def getFunda(self, field=[], minvolume=0):
-        '以字典形式返回分级A数据'
+    def get_funda(self, field=[], min_volume=0, min_discount=0, ignore_nodown=False, forever=False):
+        '''以字典形式返回分级A数据
+        :param field:利率范围，形如['+3.0%', '6.0%']
+        :param min_volume:最小交易量，单位万元
+        :param min_discount:最小折价率, 单位%
+        :param ignore_nodown:是否忽略无下折品种,默认 False
+        :param forever: 是否选择永续品种,默认 False
+        '''
         # 添加当前的ctime
         self.__funda_url = self.__funda_url.format(ctime=int(time.time()))
         # 请求数据
@@ -82,17 +88,24 @@ class JSL(object):
         # 获取返回的json字符串
         fundajson = json.loads(rep.text)
         # 格式化返回的json字符串
-        alldata = self.formatjson(fundajson)
+        data = self.formatjson(fundajson)
         # 过滤小于指定交易量的数据
-        if minvolume:
-            alldata = {k:alldata[k] for k in alldata if float(alldata[k]['funda_volume']) > minvolume}
+        if min_volume:
+            data = {k:data[k] for k in data if float(data[k]['funda_volume']) > min_volume}
         if len(field):
-            alldata = {k:alldata[k] for k in alldata if alldata[k]['coupon_descr_s'] in ''.join(field)}
-        self.__funda = alldata
+            data = {k:data[k] for k in data if data[k]['coupon_descr_s'] in ''.join(field)}
+        if ignore_nodown:
+            data = {k:data[k] for k in data if data[k]['fund_descr'].find('无下折') == -1}
+        if forever:
+            data = {k:data[k] for k in data if data[k]['funda_left_year'].find('永续') != -1}
+        if min_discount:
+            data = {k:data[k] for k in data if float(data[k]['funda_discount_rt'][:-1]) > min_discount}
+
+        self.__funda = data
         return self.__funda
 
 
 if __name__ == '__main__':
     funda = JSL()
     # 设置利率范围和最小交易量
-    pprint(funda.getFunda(field=['+3.5%', '5.0%'], minvolume=300))
+    pprint(funda.get_funda(field=['+3.5%', '5.0%'], min_volume=300))
